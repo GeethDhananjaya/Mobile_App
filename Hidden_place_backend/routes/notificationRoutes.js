@@ -1,6 +1,6 @@
 const express = require('express');
 const Notification = require('../models/Notification');
-const { protect } = require('../middleware/authMiddleware');
+const protect = require('../middleware/authMiddleware');
 const router = express.Router();
 
 // Get notifications for current user
