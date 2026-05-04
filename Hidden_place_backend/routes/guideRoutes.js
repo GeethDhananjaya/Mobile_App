@@ -65,21 +65,39 @@ router.put('/:id', protect, async (req, res) => {
 // ==========================================
 router.delete('/:id', protect, async (req, res) => {
   try {
-    const guide = await Guide.findById(req.params.id);
-    if (!guide) return res.status(404).json({ message: 'Guide not found' });
-
-    const adminUser = await User.findById(req.user);
-    if (guide.creator.toString() !== req.user && adminUser.role !== 'admin') {
-      return res.status(401).json({ message: 'Not authorized' });
+    console.log(`🗑 Attempting to remove guide with ID: ${req.params.id}`);
+    
+    // 1. Try to find the guide by Guide ID OR by Creator ID (just in case)
+    let guide = await Guide.findById(req.params.id);
+    if (!guide) {
+      guide = await Guide.findOne({ creator: req.params.id });
     }
 
-    await Guide.findByIdAndDelete(req.params.id);
+    if (!guide) {
+      console.log('❌ Guide profile not found for ID:', req.params.id);
+      return res.status(404).json({ message: 'Guide profile not found' });
+    }
 
-    // Reset the user's role to traveller (creator of the guide profile)
-    await User.findByIdAndUpdate(guide.creator, { role: 'traveller' });
+    // 2. Permission Check
+    const adminUser = await User.findById(req.user);
+    const isOwner = guide.creator.toString() === req.user;
+    const isAdmin = adminUser && adminUser.role === 'admin';
 
+    if (!isOwner && !isAdmin) {
+      return res.status(401).json({ message: 'Not authorized to remove this guide' });
+    }
+
+    // 3. Delete the profile
+    const creatorId = guide.creator;
+    await Guide.findByIdAndDelete(guide._id);
+
+    // 4. Reset User Role to traveller
+    await User.findByIdAndUpdate(creatorId, { role: 'traveller' });
+
+    console.log('✅ Guide profile successfully removed for user:', creatorId);
     res.status(200).json({ message: 'Guide profile removed.' });
   } catch (error) {
+    console.error('🔥 Error removing guide:', error);
     res.status(500).json({ message: 'Error removing guide', error: error.message });
   }
 });
