@@ -1,19 +1,35 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, ImageBackground, StatusBar, FlatList } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, ImageBackground, StatusBar, FlatList, Modal, StyleSheet, ScrollView } from 'react-native';
 import { globalStyles, COLORS, BG_IMAGE } from '../styles/globalStyles';
 import { API_BASE_URL } from '../apiConfig';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function CategoriesScreen({ navigation }) {
     const [name, setName] = useState('');
-    const [icon, setIcon] = useState('📍'); // Default emoji
+    const [icon, setIcon] = useState('📍');
+    const [description, setDescription] = useState('');
     const [categories, setCategories] = useState([]);
+    const [popularCategories, setPopularCategories] = useState([]);
     const [loading, setLoading] = useState(false);
     const [fetching, setFetching] = useState(true);
+    const [user, setUser] = useState(null);
+    
+    // Modal states for editing
+    const [isEditModalVisible, setEditModalVisible] = useState(false);
+    const [editingCategory, setEditingCategory] = useState(null);
+
+    const isAdmin = user?.role === 'admin';
 
     useEffect(() => {
-        fetchCategories();
+        initData();
     }, []);
+
+    const initData = async () => {
+        const userData = await AsyncStorage.getItem('userData');
+        if (userData) setUser(JSON.parse(userData));
+        fetchCategories();
+        fetchPopular();
+    };
 
     const fetchCategories = async () => {
         try {
@@ -24,8 +40,19 @@ export default function CategoriesScreen({ navigation }) {
         finally { setFetching(false); }
     };
 
+    const fetchPopular = async () => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/categories/popular`);
+            const data = await res.json();
+            if (res.ok) setPopularCategories(data);
+        } catch (error) {}
+    };
+
     const addCategory = async () => {
-        if (!name) return;
+        if (!name || !description) {
+            Alert.alert('Incomplete', 'Name and description are required');
+            return;
+        }
         setLoading(true);
         try {
             const token = await AsyncStorage.getItem('userToken');
@@ -35,13 +62,15 @@ export default function CategoriesScreen({ navigation }) {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}` 
                 },
-                body: JSON.stringify({ name, icon })
+                body: JSON.stringify({ name, icon, description })
             });
 
             if (res.ok) {
                 setName('');
                 setIcon('📍');
+                setDescription('');
                 fetchCategories();
+                Alert.alert('Success', 'Category added!');
             } else {
                 Alert.alert('Error', 'Failed to add category');
             }
@@ -49,16 +78,70 @@ export default function CategoriesScreen({ navigation }) {
         finally { setLoading(false); }
     };
 
-    const deleteCategory = async (id) => {
-        const token = await AsyncStorage.getItem('userToken');
+    const handleUpdate = async () => {
+        if (!editingCategory.name || !editingCategory.description) return;
+        setLoading(true);
         try {
-            const res = await fetch(`${API_BASE_URL}/categories/${id}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
+            const token = await AsyncStorage.getItem('userToken');
+            const res = await fetch(`${API_BASE_URL}/categories/${editingCategory._id}`, {
+                method: 'PUT',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}` 
+                },
+                body: JSON.stringify(editingCategory)
             });
-            if (res.ok) fetchCategories();
-        } catch (error) { Alert.alert('Error', 'Delete failed'); }
+            if (res.ok) {
+                setEditModalVisible(false);
+                fetchCategories();
+                Alert.alert('Success', 'Category updated!');
+            }
+        } catch (error) { Alert.alert('Error', 'Update failed'); }
+        finally { setLoading(false); }
     };
+
+    const deleteCategory = async (id) => {
+        Alert.alert('Confirm Delete', 'Are you sure you want to remove this category?', [
+            { text: 'Cancel' },
+            { text: 'Delete', style:'destructive', onPress: async () => {
+                const token = await AsyncStorage.getItem('userToken');
+                try {
+                    const res = await fetch(`${API_BASE_URL}/categories/${id}`, {
+                        method: 'DELETE',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (res.ok) fetchCategories();
+                } catch (error) { Alert.alert('Error', 'Delete failed'); }
+            }}
+        ]);
+    };
+
+    const startEdit = (item) => {
+        setEditingCategory(item);
+        setEditModalVisible(true);
+    };
+
+    const renderCategoryItem = ({ item }) => (
+        <View style={styles.catCard}>
+            <View style={{flexDirection:'row', gap: 12, alignItems:'center', flex: 1}}>
+                <Text style={{fontSize: 24}}>{item.icon}</Text>
+                <View style={{flex: 1}}>
+                    <Text style={{color: COLORS.white, fontWeight: '700', fontSize: 16}}>{item.name}</Text>
+                    {item.description && <Text numberOfLines={1} style={{color: COLORS.textMuted, fontSize: 12}}>{item.description}</Text>}
+                </View>
+            </View>
+            {isAdmin && (
+                <View style={{flexDirection:'row', gap: 15}}>
+                    <TouchableOpacity onPress={() => startEdit(item)}>
+                        <Text style={{color: COLORS.accent}}>Edit</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => deleteCategory(item._id)}>
+                        <Text style={{color: COLORS.error}}>×</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
+        </View>
+    );
 
     return (
         <View style={globalStyles.screenRoot}>
@@ -67,54 +150,159 @@ export default function CategoriesScreen({ navigation }) {
                 <View style={globalStyles.overlay} />
                 <View style={{ flex: 1, padding: 24, paddingTop: 60 }}>
                     
-                    <Text style={globalStyles.title}>Manage Categories</Text>
-                    <Text style={globalStyles.subtitle}>Environmental Tags for Destinations</Text>
+                    <View style={globalStyles.rowBetween}>
+                        <View>
+                            <Text style={globalStyles.title}>{isAdmin ? 'Manage Categories' : 'Destinations'}</Text>
+                            <Text style={globalStyles.subtitle}>Explore world by experience</Text>
+                        </View>
+                        <TouchableOpacity style={globalStyles.buttonGhost} onPress={() => navigation.goBack()}>
+                            <Text style={globalStyles.buttonGhostText}>← Back</Text>
+                        </TouchableOpacity>
+                    </View>
 
-                    <View style={[globalStyles.card, { paddingVertical: 15, marginBottom: 20 }]}>
-                         <View style={{flexDirection:'row', gap: 10, alignItems:'center'}}>
-                            <View style={[globalStyles.inputRow, {width: 60, justifyContent:'center'}]}>
-                                <TextInput style={globalStyles.input} placeholder="Icon" value={icon} onChangeText={setIcon} maxLength={2} />
+                    {isAdmin && (
+                        <View style={[globalStyles.card, { marginTop: 20 }]}>
+                            <Text style={{color: COLORS.white, fontWeight:'700', marginBottom: 10}}>Create New Category</Text>
+                            <View style={{flexDirection:'row', gap: 10, alignItems:'center'}}>
+                                <View style={[globalStyles.inputRow, {width: 60, justifyContent:'center'}]}>
+                                    <TextInput style={globalStyles.input} placeholder="Icon" value={icon} onChangeText={setIcon} maxLength={2} />
+                                </View>
+                                <View style={[globalStyles.inputRow, {flex: 1}]}>
+                                    <TextInput style={globalStyles.input} placeholder="Category Name" placeholderTextColor={COLORS.textMuted} value={name} onChangeText={setName} />
+                                </View>
                             </View>
-                            <View style={[globalStyles.inputRow, {flex: 1}]}>
-                                <TextInput style={globalStyles.input} placeholder="New Category Name" placeholderTextColor={COLORS.textMuted} value={name} onChangeText={setName} />
+                            <View style={[globalStyles.inputRow, {marginTop: 10, height: 60}]}>
+                                <TextInput 
+                                    style={globalStyles.input} 
+                                    placeholder="Brief description..." 
+                                    placeholderTextColor={COLORS.textMuted} 
+                                    multiline 
+                                    value={description} 
+                                    onChangeText={setDescription} 
+                                />
                             </View>
                             <TouchableOpacity 
-                                style={[globalStyles.button, {width: 52, height: 52, borderRadius: 14, shadowColor:'transparent'}]} 
+                                style={[globalStyles.button, {marginTop: 15, height: 48}]} 
                                 onPress={addCategory}
                                 disabled={loading}
                             >
-                                {loading ? <ActivityIndicator color={COLORS.textDark} /> : <Text style={{fontSize: 24, fontWeight:'700', color: COLORS.textDark}}>+</Text>}
+                                {loading ? <ActivityIndicator color={COLORS.textDark} /> : <Text style={globalStyles.buttonText}>Add Category ✦</Text>}
                             </TouchableOpacity>
-                         </View>
-                    </View>
+                        </View>
+                    )}
 
+                    {!fetching && popularCategories.length > 0 && !isAdmin && (
+                        <View style={{marginTop: 20}}>
+                            <Text style={{color: COLORS.accent, fontWeight:'800', fontSize: 12, letterSpacing: 1, marginBottom: 15}}>POPULAR CATEGORIES</Text>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{marginBottom: 10}}>
+                                {popularCategories.map(p => (
+                                    <TouchableOpacity key={p._id} style={styles.popChip} onPress={() => navigation.navigate('Home', { activeCat: p._id })}>
+                                        <Text style={{fontSize: 20}}>{p.icon}</Text>
+                                        <Text style={{color: COLORS.white, fontWeight:'600', marginLeft: 8}}>{p.name}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+                        </View>
+                    )}
+
+                    <Text style={{color: COLORS.white, fontWeight:'800', fontSize: 12, letterSpacing: 1, marginTop: 25, marginBottom: 15}}>ALL CATEGORIES</Text>
                     {fetching ? (
-                        <ActivityIndicator color={COLORS.accent} />
+                        <ActivityIndicator color={COLORS.accent} style={{marginTop: 50}} />
                     ) : (
                         <FlatList
                             data={categories}
-                            renderItem={({ item }) => (
-                                <View style={{ flexDirection:'row', backgroundColor: COLORS.glassCardDark, padding: 15, borderRadius: 16, marginBottom: 10, alignItems:'center', justifyContent: 'space-between', borderLeftWidth: 4, borderColor: COLORS.accent }}>
-                                    <View style={{flexDirection:'row', gap: 12, alignItems:'center'}}>
-                                        <Text style={{fontSize: 20}}>{item.icon}</Text>
-                                        <Text style={{color: COLORS.white, fontWeight: '700'}}>{item.name}</Text>
-                                    </View>
-                                    <TouchableOpacity onPress={() => deleteCategory(item._id)}>
-                                        <Text style={{color: COLORS.error}}>Remove ×</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            )}
+                            renderItem={renderCategoryItem}
                             keyExtractor={item => item._id}
                             showsVerticalScrollIndicator={false}
+                            contentContainerStyle={{paddingBottom: 40}}
                         />
                     )}
 
-                    <TouchableOpacity style={globalStyles.buttonGhost} onPress={() => navigation.goBack()}>
-                        <Text style={globalStyles.buttonGhostText}>← Back to Home</Text>
-                    </TouchableOpacity>
-
                 </View>
+
+                {/* Edit Modal */}
+                <Modal visible={isEditModalVisible} transparent animationType="slide">
+                    <View style={styles.modalOverlay}>
+                        <View style={styles.modalContent}>
+                            <Text style={styles.modalTitle}>Update Category</Text>
+                            {editingCategory && (
+                                <View>
+                                    <View style={globalStyles.inputGroup}>
+                                        <Text style={globalStyles.fieldLabel}>Name & Icon</Text>
+                                        <View style={{flexDirection:'row', gap: 10}}>
+                                            <View style={[globalStyles.inputRow, {width: 60}]}>
+                                                <TextInput style={globalStyles.input} value={editingCategory.icon} onChangeText={(v) => setEditingCategory({...editingCategory, icon: v})} maxLength={2} />
+                                            </View>
+                                            <View style={[globalStyles.inputRow, {flex: 1}]}>
+                                                <TextInput style={globalStyles.input} value={editingCategory.name} onChangeText={(v) => setEditingCategory({...editingCategory, name: v})} />
+                                            </View>
+                                        </View>
+                                    </View>
+                                    <View style={globalStyles.inputGroup}>
+                                        <Text style={globalStyles.fieldLabel}>Description</Text>
+                                        <View style={[globalStyles.inputRow, {height: 80, alignItems:'flex-start', paddingVertical: 10}]}>
+                                            <TextInput style={globalStyles.input} multiline value={editingCategory.description} onChangeText={(v) => setEditingCategory({...editingCategory, description: v})} />
+                                        </View>
+                                    </View>
+                                    
+                                    <TouchableOpacity style={[globalStyles.button, {marginTop: 20}]} onPress={handleUpdate} disabled={loading}>
+                                        {loading ? <ActivityIndicator color={COLORS.textDark} /> : <Text style={globalStyles.buttonText}>Save Changes</Text>}
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={globalStyles.buttonGhost} onPress={() => setEditModalVisible(false)}>
+                                        <Text style={globalStyles.buttonGhostText}>Cancel</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            )}
+                        </View>
+                    </View>
+                </Modal>
+
             </ImageBackground>
         </View>
     );
 }
+
+const styles = StyleSheet.create({
+    catCard: {
+        flexDirection:'row', 
+        backgroundColor: COLORS.glassCardDark, 
+        padding: 16, 
+        borderRadius: 20, 
+        marginBottom: 12, 
+        alignItems:'center', 
+        justifyContent: 'space-between', 
+        borderWidth: 1, 
+        borderColor: COLORS.border1
+    },
+    popChip: {
+        flexDirection:'row', 
+        alignItems:'center', 
+        backgroundColor: COLORS.glass1, 
+        paddingHorizontal: 16, 
+        paddingVertical: 12, 
+        borderRadius: 16, 
+        marginRight: 10, 
+        borderWidth: 1, 
+        borderColor: COLORS.border1
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.8)',
+        justifyContent: 'center',
+        padding: 24
+    },
+    modalContent: {
+        backgroundColor: COLORS.glassCardDark,
+        borderRadius: 32,
+        padding: 24,
+        borderWidth: 1,
+        borderColor: COLORS.border1
+    },
+    modalTitle: {
+        color: COLORS.white,
+        fontSize: 20,
+        fontWeight: '800',
+        marginBottom: 20,
+        textAlign: 'center'
+    }
+});
