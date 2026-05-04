@@ -33,6 +33,16 @@ router.post('/register', async (req, res) => {
     });
     await user.save();
     
+    // Notify Admin about new registration
+    const Notification = require('../models/Notification');
+    await Notification.create({
+        targetRole: 'admin',
+        type: role === 'guide' ? 'NEW_GUIDE_REGISTER' : 'NEW_USER_REGISTER',
+        title: role === 'guide' ? 'New Guide Application' : 'New User Registered',
+        message: role === 'guide' ? `${name} applied to be a guide. Please review their application.` : `${name} just joined the platform!`,
+        relatedId: user._id
+    });
+
     const msg = (role === 'guide') 
       ? 'Registered as guide! Your profile is pending for Admin approval.' 
       : 'User registered successfully!';

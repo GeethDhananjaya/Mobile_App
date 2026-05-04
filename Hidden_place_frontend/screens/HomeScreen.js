@@ -123,11 +123,16 @@ export default function HomeScreen({ navigation }) {
                   <Text style={globalStyles.headerGreet}>Discover Hidden Places</Text>
                   <Text style={globalStyles.headerName}>{user ? user.name : 'Explorer'}</Text>
                 </View>
-                <TouchableOpacity style={globalStyles.avatar} onPress={() => navigation.navigate('Profile')}>
-                  <Text style={globalStyles.avatarText}>
-                    {user ? user.name.substring(0, 2).toUpperCase() : 'EX'}
-                  </Text>
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 15 }}>
+                  <TouchableOpacity style={[globalStyles.avatar, { backgroundColor: 'rgba(255,255,255,0.1)' }]} onPress={() => navigation.navigate('Notification')}>
+                    <Text style={{ fontSize: 20 }}>🔔</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={globalStyles.avatar} onPress={() => navigation.navigate('Profile')}>
+                    <Text style={globalStyles.avatarText}>
+                      {user ? user.name.substring(0, 2).toUpperCase() : 'EX'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </Animated.View>
 
               <Animated.View style={[globalStyles.searchBar, a1]}>

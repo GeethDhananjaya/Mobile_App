@@ -33,6 +33,7 @@ app.use('/api/categories', require('./routes/categoryRoutes'));
 app.use('/api/media',      require('./routes/mediaRoutes'));
 app.use('/api/comments',   require('./routes/commentRoutes'));
 app.use('/api/guide-reviews', require('./routes/guideReviewRoutes'));
+app.use('/api/notifications', require('./routes/notificationRoutes'));
 
 // A simple test route to make sure the server is alive
 app.get('/', (req, res) => {

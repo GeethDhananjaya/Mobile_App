@@ -35,6 +35,17 @@ router.post('/', protect, async (req, res) => {
     });
 
     const savedPlace = await newPlace.save();
+    
+    // Notify all users about the new place
+    const Notification = require('../models/Notification');
+    await Notification.create({
+        targetRole: 'all',
+        type: 'NEW_PLACE',
+        title: 'New Hidden Gem!',
+        message: `A new place "${title}" was just added. Go check it out!`,
+        relatedId: savedPlace._id
+    });
+
     res.status(201).json({ message: 'Place added successfully!', place: savedPlace });
   } catch (error) {
     console.error(error);

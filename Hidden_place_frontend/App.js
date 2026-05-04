@@ -21,6 +21,7 @@ import EditPlaceScreen from './screens/EditPlaceScreen';
 import ManageGuidesScreen from './screens/ManageGuidesScreen';
 import TripDetailsScreen from './screens/TripDetailsScreen';
 import GuideDetailsScreen from './screens/GuideDetailsScreen';
+import NotificationScreen from './screens/NotificationScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -47,6 +48,7 @@ export default function App() {
         <Stack.Screen name="ManageGuides" component={ManageGuidesScreen} />
         <Stack.Screen name="TripDetails" component={TripDetailsScreen} />
         <Stack.Screen name="GuideDetails" component={GuideDetailsScreen} />
+        <Stack.Screen name="Notification" component={NotificationScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

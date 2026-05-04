@@ -11,6 +11,21 @@ router.post('/', protect, async (req, res) => {
     const { place, text } = req.body;
     const comment = new Comment({ place, user: req.user, text });
     await comment.save();
+
+    // Fetch place to find the creator
+    const Place = require('../models/Place');
+    const placeData = await Place.findById(place);
+    if (placeData && placeData.creator.toString() !== req.user) {
+        const Notification = require('../models/Notification');
+        await Notification.create({
+            recipient: placeData.creator,
+            type: 'NEW_COMMENT',
+            title: 'New Comment on Your Place',
+            message: `Someone just commented on your place "${placeData.title}".`,
+            relatedId: place
+        });
+    }
+
     res.status(201).json(comment);
   } catch (error) {
     res.status(500).json({ message: 'Error adding comment' });
