@@ -291,7 +291,8 @@ router.get('/admin/guides-pending', protect, async (req, res) => {
     const adminUser = await User.findById(req.user);
     if (adminUser.role !== 'admin') return res.status(401).json({ message: 'Admin access only' });
 
-    const pending = await User.find({ role: 'guide', isApproved: false }).select('-password');
+    const pending = await User.find({ role: 'guide', isApproved: { $ne: true } }).select('-password');
+    console.log(`🛡 Found ${pending.length} pending guides`);
     res.status(200).json(pending);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching pending guides' });
@@ -353,10 +354,14 @@ router.delete('/admin/guides-reject/:id', protect, async (req, res) => {
     const adminUser = await User.findById(req.user);
     if (adminUser.role !== 'admin') return res.status(401).json({ message: 'Admin access only' });
 
-    // Also delete any pending guide profiles for this user
+    // 1. Delete the User account
+    const user = await User.findByIdAndDelete(req.params.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // 2. Delete any guide profiles linked to this user
     await Guide.deleteMany({ creator: req.params.id });
     
-    res.status(200).json({ message: 'Guide application rejected and deleted' });
+    res.status(200).json({ message: 'Guide application rejected and user account deleted' });
   } catch (error) {
     res.status(500).json({ message: 'Rejection failed' });
   }

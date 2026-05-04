@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Guide = require('../models/Guide');
+const User = require('../models/User');
 const protect = require('../middleware/authMiddleware');
 
 // ==========================================
@@ -74,10 +75,8 @@ router.delete('/:id', protect, async (req, res) => {
 
     await Guide.findByIdAndDelete(req.params.id);
 
-    // Also reset the user's role to traveller if the guide is removing their own profile
-    if (guide.creator.toString() === req.user) {
-        await User.findByIdAndUpdate(req.user, { role: 'traveller' });
-    }
+    // Reset the user's role to traveller (creator of the guide profile)
+    await User.findByIdAndUpdate(guide.creator, { role: 'traveller' });
 
     res.status(200).json({ message: 'Guide profile removed.' });
   } catch (error) {
