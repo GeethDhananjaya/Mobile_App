@@ -128,6 +128,16 @@ export default function EditPlaceScreen({ route, navigation }) {
             body: JSON.stringify({ imageUrl: finalUrl }),
           });
         }
+      } else if (imageUri === null) {
+        // 3. User explicitly removed the photo
+        await fetch(`${API_BASE_URL}/places/${placeId}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ imageUrl: '' }),
+        });
       }
 
       Alert.alert('Updated! ✨', 'Place and Media updated successfully.');
@@ -281,14 +291,25 @@ export default function EditPlaceScreen({ route, navigation }) {
                 {/* Photo */}
                 <View style={globalStyles.inputGroup}>
                   <Text style={globalStyles.fieldLabel}>Photo</Text>
-                  <TouchableOpacity
-                    style={[globalStyles.inputRow, { justifyContent: 'center' }]}
-                    onPress={pickImage}
-                  >
-                    <Text style={{ color: COLORS.accent, fontWeight: '700' }}>
-                      {imageUri ? 'Change Photo' : 'Select from Gallery '}
-                    </Text>
-                  </TouchableOpacity>
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    <TouchableOpacity
+                      style={[globalStyles.inputRow, { flex: 1, justifyContent: 'center' }]}
+                      onPress={pickImage}
+                    >
+                      <Text style={{ color: COLORS.accent, fontWeight: '700' }}>
+                        {imageUri ? 'Change Photo' : 'Select from Gallery '}
+                      </Text>
+                    </TouchableOpacity>
+
+                    {imageUri && (
+                        <TouchableOpacity
+                            style={[globalStyles.button, { width: 60, height: 54, borderRadius: 16, backgroundColor: 'rgba(255,107,107,0.14)', shadowColor: 'transparent', borderColor: COLORS.error, borderWidth: 1 }]}
+                            onPress={() => setImageUri(null)}
+                        >
+                            <Text style={{ fontSize: 20 }}>🗑</Text>
+                        </TouchableOpacity>
+                    )}
+                  </View>
                 </View>
 
                 {imageUri && (

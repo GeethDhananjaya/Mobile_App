@@ -79,7 +79,10 @@ export default function CategoriesScreen({ navigation }) {
     };
 
     const handleUpdate = async () => {
-        if (!editingCategory.name || !editingCategory.description) return;
+        if (!editingCategory.name || !editingCategory.description) {
+            Alert.alert('Incomplete', 'Name and description are required for the category.');
+            return;
+        }
         setLoading(true);
         try {
             const token = await AsyncStorage.getItem('userToken');
