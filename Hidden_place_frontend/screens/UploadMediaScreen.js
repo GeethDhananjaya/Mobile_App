@@ -31,6 +31,11 @@ export default function UploadMediaScreen({ route, navigation }) {
             return;
         }
 
+        if (!caption.trim()) {
+            Alert.alert('Missing Description', 'Please provide a description for your photo.');
+            return;
+        }
+
         setLoading(true);
         try {
             const token = await AsyncStorage.getItem('userToken');
@@ -106,7 +111,7 @@ export default function UploadMediaScreen({ route, navigation }) {
 
                                 {/* Caption Entry */}
                                 <View style={[globalStyles.inputGroup, {marginTop: 20}]}>
-                                    <Text style={globalStyles.fieldLabel}>Caption (Optional)</Text>
+                                    <Text style={globalStyles.fieldLabel}>Description (Required)</Text>
                                     <View style={[globalStyles.inputRow, focusedField === 'caption' && globalStyles.inputRowFocused]}>
                                         <TextInput
                                             style={globalStyles.input}
