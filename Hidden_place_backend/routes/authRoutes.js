@@ -291,7 +291,7 @@ router.get('/admin/guides-pending', protect, async (req, res) => {
     const adminUser = await User.findById(req.user);
     if (adminUser.role !== 'admin') return res.status(401).json({ message: 'Admin access only' });
 
-    const pending = await Guide.find({ isApproved: false }).populate('creator', 'name email bio');
+    const pending = await User.find({ role: 'guide', isApproved: false }).select('-password');
     res.status(200).json(pending);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching pending guides' });
@@ -306,13 +306,12 @@ router.put('/admin/guides-approve/:id', protect, async (req, res) => {
     const adminUser = await User.findById(req.user);
     if (adminUser.role !== 'admin') return res.status(401).json({ message: 'Admin access only' });
 
-    // 1. Approve the Guide profile
-    const guide = await Guide.findByIdAndUpdate(req.params.id, { isApproved: true }, { new: true }).populate('creator');
-    if (!guide) return res.status(404).json({ message: 'Guide profile not found' });
-    if (!guide.creator) return res.status(404).json({ message: 'Creator user not found' });
+    // 1. Approve the User account
+    const user = await User.findByIdAndUpdate(req.params.id, { isApproved: true }, { new: true });
+    if (!user) return res.status(404).json({ message: 'User not found' });
 
-    // 2. Approve the User account & ensure role is 'guide'
-    const user = await User.findByIdAndUpdate(guide.creator._id || guide.creator, { isApproved: true, role: 'guide' }, { new: true });
+    // 2. Approve any linked Guide profiles if they exist (rare at this stage)
+    await Guide.updateMany({ creator: req.params.id }, { isApproved: true });
 
     // Send email asynchronously
     const transporter = nodemailer.createTransport({
@@ -332,11 +331,6 @@ router.put('/admin/guides-approve/:id', protect, async (req, res) => {
           <h2 style="color: #FFB300;">Congratulations ${user.name}!</h2>
           <p>Your local guide profile for <b>Hidden Gems SL</b> has been officially approved by our admin team.</p>
           <p>You can now log in to the app and start sharing your secret discoveries and guiding travellers on their journey.</p>
-          <div style="margin-top: 20px; padding: 15px; background-color: #fff; border-left: 4px solid #FFB300;">
-            <b>Profile Details:</b><br/>
-            Name: ${guide.name}<br/>
-            Rates: ${guide.rates}
-          </div>
           <p style="margin-top: 30px;">Happy Exploring,<br/>The Hidden Gems Team</p>
         </div>
       `,

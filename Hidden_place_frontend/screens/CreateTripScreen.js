@@ -127,6 +127,21 @@ export default function CreateTripScreen({ navigation, route }) {
             return;
         }
 
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Reset time for comparison
+        const tripStart = new Date(startDate);
+        const tripEnd = new Date(endDate);
+
+        if (tripStart < today) {
+            Alert.alert('Invalid Date', 'The trip start date cannot be in the past.');
+            return;
+        }
+
+        if (tripEnd < tripStart) {
+            Alert.alert('Invalid Date', 'The trip end date must be after the start date.');
+            return;
+        }
+
         setLoading(true);
         try {
             const token = await AsyncStorage.getItem('userToken');
