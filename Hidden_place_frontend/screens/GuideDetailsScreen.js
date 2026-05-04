@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ImageBackground, ScrollView, TouchableOpacity, StatusBar, Linking, StyleSheet, Platform } from 'react-native';
+import { View, Text, ImageBackground, ScrollView, TouchableOpacity, StatusBar, Linking, StyleSheet, Platform, TextInput, ActivityIndicator, Alert } from 'react-native';
 import { globalStyles, COLORS, BG_IMAGE } from '../styles/globalStyles';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
