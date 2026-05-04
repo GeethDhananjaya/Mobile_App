@@ -29,7 +29,10 @@ export default function GuideDetailsScreen({ route, navigation }) {
     };
 
     const handlePostGuideReview = async () => {
-        if (!userComment.trim()) return;
+        if (!userComment.trim()) {
+            Alert.alert('Empty Review', 'Please write a comment before posting your review.');
+            return;
+        }
         setSubmittingReview(true);
         try {
             const token = await AsyncStorage.getItem('userToken');
