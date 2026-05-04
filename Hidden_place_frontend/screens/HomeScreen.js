@@ -1,8 +1,10 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { View, Text, ImageBackground, ScrollView, TouchableOpacity, Animated, StatusBar, Dimensions, Alert, ActivityIndicator, Image, TextInput, FlatList } from 'react-native';
 import { globalStyles, COLORS, BG_IMAGE } from '../styles/globalStyles';
 import { API_BASE_URL } from '../apiConfig';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
+import { Audio } from 'expo-av';
 
 const CARD_W = Dimensions.get('window').width * 0.65;
 
@@ -33,7 +35,45 @@ export default function HomeScreen({ navigation }) {
   const [places, setPlaces] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [categories, setCategories] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
+
+  // Play a "pop" sound when there are new notifications
+  const playSound = async () => {
+    try {
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: 'https://actions.google.com/sounds/v1/water/water_drop.ogg' }
+      );
+      await sound.playAsync();
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.didJustFinish) sound.unloadAsync();
+      });
+    } catch (e) { console.log('Sound error', e); }
+  };
+
+  const fetchUnreadCount = async () => {
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      if (!token) return;
+      const res = await fetch(`${API_BASE_URL}/notifications`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const unread = data.filter(n => !n.isRead).length;
+        setUnreadCount(prev => {
+          if (unread > prev && unread > 0) playSound();
+          return unread;
+        });
+      }
+    } catch (e) { console.log(e); }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchUnreadCount();
+    }, [])
+  );
 
   useEffect(() => {
     const loadUserInfo = async () => {
@@ -126,6 +166,11 @@ export default function HomeScreen({ navigation }) {
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 15 }}>
                   <TouchableOpacity style={[globalStyles.avatar, { backgroundColor: 'rgba(255,255,255,0.1)' }]} onPress={() => navigation.navigate('Notification')}>
                     <Text style={{ fontSize: 20 }}>🔔</Text>
+                    {unreadCount > 0 && (
+                      <View style={{ position: 'absolute', top: 0, right: 0, backgroundColor: COLORS.error, width: 16, height: 16, borderRadius: 8, justifyContent: 'center', alignItems: 'center' }}>
+                        <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+                      </View>
+                    )}
                   </TouchableOpacity>
                   <TouchableOpacity style={globalStyles.avatar} onPress={() => navigation.navigate('Profile')}>
                     <Text style={globalStyles.avatarText}>
