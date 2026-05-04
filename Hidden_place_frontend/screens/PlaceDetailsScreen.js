@@ -132,6 +132,53 @@ export default function PlaceDetailsScreen({ route, navigation }) {
     } catch (e) {}
   };
 
+  const handleDeletePhoto = async (id) => {
+    Alert.alert('Delete Photo', 'Are you sure you want to delete this photo?', [
+      { text: 'Cancel', style: 'cancel' },
+      { 
+        text: 'Delete', 
+        style: 'destructive',
+        onPress: async () => {
+          const token = await AsyncStorage.getItem('userToken');
+          const res = await fetch(`${API_BASE_URL}/media/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (res.ok) {
+            fetchPlaceData();
+          } else {
+             Alert.alert('Error', 'Failed to delete photo');
+          }
+        }
+      }
+    ]);
+  };
+
+  const handleEditPhotoCaption = async (img) => {
+     Alert.prompt(
+        'Edit Caption',
+        'Enter new caption:',
+        [
+           { text: 'Cancel', style: 'cancel' },
+           {
+              text: 'Save',
+              onPress: async (newCaption) => {
+                 const token = await AsyncStorage.getItem('userToken');
+                 const res = await fetch(`${API_BASE_URL}/media/${img._id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ caption: newCaption })
+                 });
+                 if (res.ok) fetchPlaceData();
+                 else Alert.alert('Error', 'Failed to update caption');
+              }
+           }
+        ],
+        'plain-text',
+        img.caption || ''
+     );
+  };
+
   if (loading) return <View style={[globalStyles.screenRoot, {justifyContent:'center'}]}><ActivityIndicator color={COLORS.accent} size="large" /></View>;
   if (!place) return <View style={[globalStyles.screenRoot, {justifyContent:'center'}]}><Text style={{color: COLORS.white, textAlign:'center'}}>Not found</Text></View>;
 
@@ -229,7 +276,22 @@ export default function PlaceDetailsScreen({ route, navigation }) {
                <TouchableOpacity onPress={() => navigation.navigate('UploadMedia', { placeId: place._id })}><Text style={{ color: COLORS.accent }}>+ Add Photo</Text></TouchableOpacity>
              </View>
              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
-               {gallery.map((img) => (<Image key={img._id} source={{ uri: img.url.startsWith('/') ? `${API_BASE_URL.replace('/api', '')}${img.url}` : img.url }} style={{ width: 140, height: 100, borderRadius: 12, marginRight: 10 }} />))}
+               {gallery.map((img) => (
+                 <View key={img._id} style={{ marginRight: 10, position: 'relative' }}>
+                   <Image source={{ uri: img.url.startsWith('/') ? `${API_BASE_URL.replace('/api', '')}${img.url}` : img.url }} style={{ width: 140, height: 100, borderRadius: 12 }} />
+                   {(currentUser?._id === img.uploadedBy || isAdmin) && (
+                     <View style={{ position: 'absolute', top: 5, right: 5, flexDirection: 'row', gap: 5 }}>
+                        <TouchableOpacity style={{ backgroundColor: 'rgba(0,0,0,0.6)', padding: 5, borderRadius: 5 }} onPress={() => handleEditPhotoCaption(img)}>
+                           <Text style={{ color: COLORS.accent, fontSize: 10 }}>Edit</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={{ backgroundColor: 'rgba(0,0,0,0.6)', padding: 5, borderRadius: 5 }} onPress={() => handleDeletePhoto(img._id)}>
+                           <Text style={{ color: COLORS.error, fontSize: 10 }}>Del</Text>
+                        </TouchableOpacity>
+                     </View>
+                   )}
+                   {img.caption ? <Text style={{ color: COLORS.textMuted, fontSize: 10, marginTop: 4, width: 140 }} numberOfLines={1}>{img.caption}</Text> : null}
+                 </View>
+               ))}
                {gallery.length === 0 && <Text style={{color: COLORS.textMuted}}>No photos yet</Text>}
              </ScrollView>
           </View>

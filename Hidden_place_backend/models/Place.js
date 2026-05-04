@@ -33,6 +33,11 @@ const placeSchema = new mongoose.Schema({
     ref: 'User',
     required: true,
   },
+  userPhotos: [{
+    url: { type: String, required: true },
+    uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    uploadedAt: { type: Date, default: Date.now }
+  }],
   createdAt: {
     type: Date,
     default: Date.now,
