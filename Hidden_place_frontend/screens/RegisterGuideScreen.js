@@ -183,7 +183,6 @@ export default function RegisterGuideScreen({ navigation, route }) {
                                 )}
                             </View>
 
-                            </View>
                         </ScrollView>
                     </TouchableWithoutFeedback>
                 </KeyboardAvoidingView>
