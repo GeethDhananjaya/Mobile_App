@@ -12,16 +12,21 @@ router.post('/', protect, async (req, res) => {
     const comment = new Comment({ place, user: req.user, text });
     await comment.save();
 
-    // Fetch place to find the creator
+    // Fetch place to find the creator and notify them
     const Place = require('../models/Place');
+    const User = require('../models/User');
     const placeData = await Place.findById(place);
     if (placeData && placeData.creator.toString() !== req.user) {
+        // Get the commenter's name for a friendlier message
+        const commenter = await User.findById(req.user).select('name');
+        const commenterName = commenter ? commenter.name : 'Someone';
+
         const Notification = require('../models/Notification');
         await Notification.create({
             recipient: placeData.creator,
             type: 'NEW_COMMENT',
-            title: 'New Comment on Your Place',
-            message: `Someone just commented on your place "${placeData.title}".`,
+            title: 'New Comment on Your Place 💬',
+            message: `${commenterName} commented on your place "${placeData.title}".`,
             relatedId: place
         });
     }

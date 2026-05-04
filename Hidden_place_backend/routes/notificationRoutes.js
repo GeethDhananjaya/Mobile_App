@@ -6,11 +6,17 @@ const router = express.Router();
 // Get notifications for current user
 router.get('/', protect, async (req, res) => {
     try {
+        // req.user is a plain string ID set by authMiddleware (decoded.userId)
+        const userId = req.user;
+        const User = require('../models/User');
+        const user = await User.findById(userId).select('role');
+        const userRole = user ? user.role : 'user';
+
         const query = {
             $or: [
-                { recipient: req.user._id },
+                { recipient: userId },
                 { targetRole: 'all' },
-                { targetRole: req.user.role }
+                { targetRole: userRole }
             ]
         };
         const notifications = await Notification.find(query).sort({ createdAt: -1 }).limit(50);
@@ -23,9 +29,8 @@ router.get('/', protect, async (req, res) => {
 // Mark all as read
 router.put('/read', protect, async (req, res) => {
     try {
-        // We only mark specific recipient notifications as read to avoid marking 'all' or 'admin' as read for everyone globally if we don't track per-user read state for global ones.
-        // For simplicity, let's just mark the recipient ones.
-        await Notification.updateMany({ recipient: req.user._id, isRead: false }, { isRead: true });
+        // req.user is a plain string ID set by authMiddleware
+        await Notification.updateMany({ recipient: req.user, isRead: false }, { isRead: true });
         res.json({ message: 'Notifications marked as read' });
     } catch (error) {
         res.status(500).json({ message: 'Server error' });
