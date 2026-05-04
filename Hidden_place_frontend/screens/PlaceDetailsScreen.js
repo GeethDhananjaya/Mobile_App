@@ -63,7 +63,10 @@ export default function PlaceDetailsScreen({ route, navigation }) {
   };
 
   const handlePostComment = async () => {
-    if (!commentText.trim()) return;
+    if (!commentText.trim()) {
+        Alert.alert('Empty Comment', 'Please write something before posting.');
+        return;
+    }
     const token = await AsyncStorage.getItem('userToken');
     try {
        const url = editingCommentId ? `${API_BASE_URL}/comments/${editingCommentId}` : `${API_BASE_URL}/comments`;
