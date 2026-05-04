@@ -309,9 +309,10 @@ router.put('/admin/guides-approve/:id', protect, async (req, res) => {
     // 1. Approve the Guide profile
     const guide = await Guide.findByIdAndUpdate(req.params.id, { isApproved: true }, { new: true }).populate('creator');
     if (!guide) return res.status(404).json({ message: 'Guide profile not found' });
+    if (!guide.creator) return res.status(404).json({ message: 'Creator user not found' });
 
     // 2. Approve the User account & ensure role is 'guide'
-    const user = await User.findByIdAndUpdate(guide.creator._id, { isApproved: true, role: 'guide' }, { new: true });
+    const user = await User.findByIdAndUpdate(guide.creator._id || guide.creator, { isApproved: true, role: 'guide' }, { new: true });
 
     // Send email asynchronously
     const transporter = nodemailer.createTransport({

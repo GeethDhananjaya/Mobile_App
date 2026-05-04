@@ -53,16 +53,18 @@ export default function GuideDetailsScreen({ route, navigation }) {
         }
     };
 
+    const isAdmin = user?.role === 'admin';
     const isOwner = user && (user._id === guide.creator?._id || user._id === guide.creator);
+    const canManage = isOwner || isAdmin;
 
-    const handleLeaveRole = () => {
+    const handleRemoveGuide = () => {
         Alert.alert(
-            'Leave Guide Role?',
-            'Your professional profile will be deleted and your account will return to Traveller status.',
+            isAdmin ? 'Remove Guide Profile?' : 'Leave Guide Role?',
+            isAdmin ? 'As an admin, you are removing this professional profile.' : 'Your professional profile will be deleted and your account will return to Traveller status.',
             [
                 { text: 'Cancel', style: 'cancel' },
                 { 
-                    text: 'Confirm Leave', 
+                    text: isAdmin ? 'Remove' : 'Confirm Leave', 
                     style: 'destructive',
                     onPress: async () => {
                         try {
@@ -72,14 +74,16 @@ export default function GuideDetailsScreen({ route, navigation }) {
                                 headers: { 'Authorization': `Bearer ${token}` }
                             });
                             if (res.ok) {
-                                // Update local user data
-                                const updatedUser = { ...user, role: 'traveller' };
-                                await AsyncStorage.setItem('userData', JSON.stringify(updatedUser));
-                                Alert.alert('Role Updated', 'You are no longer a Guide.');
+                                if (isOwner) {
+                                    // Update local user data if it's the owner leaving
+                                    const updatedUser = { ...user, role: 'traveller' };
+                                    await AsyncStorage.setItem('userData', JSON.stringify(updatedUser));
+                                }
+                                Alert.alert('Success', isAdmin ? 'Guide profile removed.' : 'You are no longer a Guide.');
                                 navigation.navigate('Home');
                             }
                         } catch (e) {
-                            Alert.alert('Error', 'Failed to leave guide role');
+                            Alert.alert('Error', 'Failed to remove guide profile');
                         }
                     }
                 }
@@ -124,20 +128,22 @@ export default function GuideDetailsScreen({ route, navigation }) {
                                 <Text style={{ color: COLORS.white, fontWeight: '600' }}>← Back</Text>
                             </TouchableOpacity>
 
-                            {isOwner && (
+                            {canManage && (
                                 <View style={{ flexDirection:'row', gap: 10 }}>
                                     <TouchableOpacity 
                                         style={{ backgroundColor: COLORS.error, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, opacity: 0.8 }}
-                                        onPress={handleLeaveRole}
+                                        onPress={handleRemoveGuide}
                                     >
-                                        <Text style={{ color: COLORS.white, fontWeight: '700', fontSize: 11 }}>Leave Role ×</Text>
+                                        <Text style={{ color: COLORS.white, fontWeight: '700', fontSize: 11 }}>{isAdmin ? 'Remove Guide ×' : 'Leave Role ×'}</Text>
                                     </TouchableOpacity>
-                                    <TouchableOpacity 
-                                        style={{ backgroundColor: COLORS.accent, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12 }}
-                                        onPress={() => navigation.navigate('RegisterGuide', { guide: guide })}
-                                    >
-                                        <Text style={{ color: COLORS.textDark, fontWeight: '700', fontSize: 11 }}>Edit Profile ✎</Text>
-                                    </TouchableOpacity>
+                                    {isOwner && (
+                                        <TouchableOpacity 
+                                            style={{ backgroundColor: COLORS.accent, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12 }}
+                                            onPress={() => navigation.navigate('RegisterGuide', { guide: guide })}
+                                        >
+                                            <Text style={{ color: COLORS.textDark, fontWeight: '700', fontSize: 11 }}>Edit Profile ✎</Text>
+                                        </TouchableOpacity>
+                                    )}
                                 </View>
                             )}
                         </View>
@@ -179,7 +185,7 @@ export default function GuideDetailsScreen({ route, navigation }) {
                     <View style={{ paddingHorizontal: 24, marginTop: 40 }}>
                         <Text style={{ color: COLORS.white, fontSize: 18, fontWeight: '800', marginBottom: 20 }}>Traveller Reviews</Text>
                         
-                        {!isOwner && user && (
+                        {!isOwner && user && user.role === 'traveller' && (
                             <View style={[globalStyles.card, { marginBottom: 25, borderColor: COLORS.accent, borderWidth: 0.5 }]}>
                                 <Text style={{ color: COLORS.accent, fontWeight: '700', fontSize: 13, marginBottom: 15 }}>Rate this Guide</Text>
                                 <View style={{ flexDirection: 'row', gap: 10, marginBottom: 15 }}>
