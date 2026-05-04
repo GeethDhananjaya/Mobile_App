@@ -291,9 +291,7 @@ router.get('/admin/guides-pending', protect, async (req, res) => {
     const adminUser = await User.findById(req.user);
     if (adminUser.role !== 'admin') return res.status(401).json({ message: 'Admin access only' });
 
-    const pending = await User.find({ role: 'guide', isApproved: { $ne: true } }).select('-password');
-    // Map to a format consistent with what ManageGuidesScreen expects if needed, 
-    // but ManageGuidesScreen uses g.name, g.email, g.bio which Guide has!
+    const pending = await Guide.find({ isApproved: false }).populate('creator', 'name email bio');
     res.status(200).json(pending);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching pending guides' });
@@ -308,16 +306,14 @@ router.put('/admin/guides-approve/:id', protect, async (req, res) => {
     const adminUser = await User.findById(req.user);
     if (adminUser.role !== 'admin') return res.status(401).json({ message: 'Admin access only' });
 
-    // 1. Approve the User account
-    const user = await User.findByIdAndUpdate(req.params.id, { isApproved: true }, { new: true });
-    if (!user) return res.status(404).json({ message: 'User not found' });
+    // 1. Approve the Guide profile
+    const guide = await Guide.findByIdAndUpdate(req.params.id, { isApproved: true }, { new: true }).populate('creator');
+    if (!guide) return res.status(404).json({ message: 'Guide profile not found' });
 
-    // 2. Approve the Guide profile(s) for this user
-    await Guide.updateMany({ creator: req.params.id }, { isApproved: true });
+    // 2. Approve the User account & ensure role is 'guide'
+    const user = await User.findByIdAndUpdate(guide.creator._id, { isApproved: true, role: 'guide' }, { new: true });
 
-    // Send email to guide... (using 'user' variable now instead of 'guide')
-
-    // Send email to guide asynchronously
+    // Send email asynchronously
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
@@ -331,10 +327,15 @@ router.put('/admin/guides-approve/:id', protect, async (req, res) => {
       to: user.email,
       subject: 'Welcome to the Team! Your Guide Profile is Approved 🛡',
       html: `
-        <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
-          <h2>Congratulations ${user.name}!</h2>
+        <div style="font-family: Arial, sans-serif; padding: 20px; color: #333; background-color: #f9f9f9; border-radius: 10px;">
+          <h2 style="color: #FFB300;">Congratulations ${user.name}!</h2>
           <p>Your local guide profile for <b>Hidden Gems SL</b> has been officially approved by our admin team.</p>
           <p>You can now log in to the app and start sharing your secret discoveries and guiding travellers on their journey.</p>
+          <div style="margin-top: 20px; padding: 15px; background-color: #fff; border-left: 4px solid #FFB300;">
+            <b>Profile Details:</b><br/>
+            Name: ${guide.name}<br/>
+            Rates: ${guide.rates}
+          </div>
           <p style="margin-top: 30px;">Happy Exploring,<br/>The Hidden Gems Team</p>
         </div>
       `,

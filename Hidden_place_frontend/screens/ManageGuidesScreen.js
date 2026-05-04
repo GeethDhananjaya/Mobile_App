@@ -101,14 +101,17 @@ export default function ManageGuidesScreen({ navigation }) {
 
                     {loading ? (
                         <ActivityIndicator color={COLORS.accent} size="large" style={{ marginTop: 50 }} />
-                    ) : (
-                        <View style={{ gap: 16 }}>
+                    ) : (                        <View style={{ gap: 16 }}>
                             {pendingGuides.map(g => (
-                                <View key={g._id} style={globalStyles.card}>
+                                <TouchableOpacity 
+                                    key={g._id} 
+                                    style={globalStyles.card}
+                                    onPress={() => navigation.navigate('GuideDetails', { guide: g })}
+                                >
                                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                         <View style={{ flex: 1 }}>
                                             <Text style={{ color: COLORS.white, fontSize: 18, fontWeight: '700' }}>{g.name}</Text>
-                                            <Text style={{ color: COLORS.accent, fontSize: 13, marginTop: 2 }}>{g.email}</Text>
+                                            <Text style={{ color: COLORS.accent, fontSize: 13, marginTop: 2 }}>{g.creator?.email || 'N/A'}</Text>
                                         </View>
                                         <View style={{ backgroundColor: COLORS.glass1, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 }}>
                                             <Text style={{ color: COLORS.textMuted, fontSize: 9, fontWeight: '800' }}>PENDING</Text>
@@ -117,7 +120,10 @@ export default function ManageGuidesScreen({ navigation }) {
                                     
                                     <View style={{ marginTop: 15, padding: 12, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 12 }}>
                                         <Text style={{ color: COLORS.textSoft, fontSize: 13, fontStyle: 'italic' }}>
-                                            "{g.bio || 'No bio provided.'}"
+                                            {g.bio || g.creator?.bio || 'No bio provided.'}
+                                        </Text>
+                                        <Text style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 10 }}>
+                                            Experience: {g.experience} • Rate: {g.rates}
                                         </Text>
                                     </View>
 
@@ -136,7 +142,7 @@ export default function ManageGuidesScreen({ navigation }) {
                                             <Text style={{ color: COLORS.error, fontWeight: '700', fontSize: 13 }}>Reject ✖</Text>
                                         </TouchableOpacity>
                                     </View>
-                                </View>
+                                </TouchableOpacity>
                             ))}
 
                             {pendingGuides.length === 0 && (

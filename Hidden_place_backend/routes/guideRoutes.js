@@ -67,12 +67,19 @@ router.delete('/:id', protect, async (req, res) => {
     const guide = await Guide.findById(req.params.id);
     if (!guide) return res.status(404).json({ message: 'Guide not found' });
 
-    if (guide.creator.toString() !== req.user) {
+    const adminUser = await User.findById(req.user);
+    if (guide.creator.toString() !== req.user && adminUser.role !== 'admin') {
       return res.status(401).json({ message: 'Not authorized' });
     }
 
     await Guide.findByIdAndDelete(req.params.id);
-    res.status(200).json({ message: 'Guide removed successfully' });
+
+    // Also reset the user's role to traveller if the guide is removing their own profile
+    if (guide.creator.toString() === req.user) {
+        await User.findByIdAndUpdate(req.user, { role: 'traveller' });
+    }
+
+    res.status(200).json({ message: 'Guide profile removed.' });
   } catch (error) {
     res.status(500).json({ message: 'Error removing guide', error: error.message });
   }

@@ -6,6 +6,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export default function GuideDetailsScreen({ route, navigation }) {
     const { guide } = route.params;
     const [user, setUser] = useState(null);
+    const [guideReviews, setGuideReviews] = useState([]);
+    const [userRating, setUserRating] = useState(5);
+    const [userComment, setUserComment] = useState('');
+    const [submittingReview, setSubmittingReview] = useState(false);
 
     useEffect(() => {
         const loadUser = async () => {
@@ -13,9 +17,75 @@ export default function GuideDetailsScreen({ route, navigation }) {
             if (userData) setUser(JSON.parse(userData));
         };
         loadUser();
+        fetchGuideReviews();
     }, []);
 
+    const fetchGuideReviews = async () => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/guide-reviews/${guide._id}`);
+            if (res.ok) setGuideReviews(await res.json());
+        } catch (e) {}
+    };
+
+    const handlePostGuideReview = async () => {
+        if (!userComment.trim()) return;
+        setSubmittingReview(true);
+        try {
+            const token = await AsyncStorage.getItem('userToken');
+            const res = await fetch(`${API_BASE_URL}/guide-reviews`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}` 
+                },
+                body: JSON.stringify({ guide: guide._id, rating: userRating, comment: userComment.trim() })
+            });
+            if (res.ok) {
+                setUserComment('');
+                setUserRating(5);
+                fetchGuideReviews();
+                Alert.alert('Review Posted', 'Thank you for your feedback!');
+            }
+        } catch (e) {
+            Alert.alert('Error', 'Failed to post review');
+        } finally {
+            setSubmittingReview(false);
+        }
+    };
+
     const isOwner = user && (user._id === guide.creator?._id || user._id === guide.creator);
+
+    const handleLeaveRole = () => {
+        Alert.alert(
+            'Leave Guide Role?',
+            'Your professional profile will be deleted and your account will return to Traveller status.',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                { 
+                    text: 'Confirm Leave', 
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            const token = await AsyncStorage.getItem('userToken');
+                            const res = await fetch(`${API_BASE_URL}/guides/${guide._id}`, {
+                                method: 'DELETE',
+                                headers: { 'Authorization': `Bearer ${token}` }
+                            });
+                            if (res.ok) {
+                                // Update local user data
+                                const updatedUser = { ...user, role: 'traveller' };
+                                await AsyncStorage.setItem('userData', JSON.stringify(updatedUser));
+                                Alert.alert('Role Updated', 'You are no longer a Guide.');
+                                navigation.navigate('Home');
+                            }
+                        } catch (e) {
+                            Alert.alert('Error', 'Failed to leave guide role');
+                        }
+                    }
+                }
+            ]
+        );
+    };
 
     const handleContact = () => {
         const email = guide.creator?.email || guide.contact;
@@ -55,12 +125,20 @@ export default function GuideDetailsScreen({ route, navigation }) {
                             </TouchableOpacity>
 
                             {isOwner && (
-                                <TouchableOpacity 
-                                    style={{ backgroundColor: COLORS.accent, paddingHorizontal: 15, paddingVertical: 8, borderRadius: 12 }}
-                                    onPress={() => navigation.navigate('RegisterGuide', { guide: guide })}
-                                >
-                                    <Text style={{ color: COLORS.textDark, fontWeight: '700', fontSize: 12 }}>Edit Profile ✎</Text>
-                                </TouchableOpacity>
+                                <View style={{ flexDirection:'row', gap: 10 }}>
+                                    <TouchableOpacity 
+                                        style={{ backgroundColor: COLORS.error, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, opacity: 0.8 }}
+                                        onPress={handleLeaveRole}
+                                    >
+                                        <Text style={{ color: COLORS.white, fontWeight: '700', fontSize: 11 }}>Leave Role ×</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity 
+                                        style={{ backgroundColor: COLORS.accent, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12 }}
+                                        onPress={() => navigation.navigate('RegisterGuide', { guide: guide })}
+                                    >
+                                        <Text style={{ color: COLORS.textDark, fontWeight: '700', fontSize: 11 }}>Edit Profile ✎</Text>
+                                    </TouchableOpacity>
+                                </View>
                             )}
                         </View>
 
@@ -95,6 +173,58 @@ export default function GuideDetailsScreen({ route, navigation }) {
                                 </View>
                             </View>
                         </View>
+                    </View>
+
+                    {/* Guide Reviews Section */}
+                    <View style={{ paddingHorizontal: 24, marginTop: 40 }}>
+                        <Text style={{ color: COLORS.white, fontSize: 18, fontWeight: '800', marginBottom: 20 }}>Traveller Reviews</Text>
+                        
+                        {!isOwner && user && (
+                            <View style={[globalStyles.card, { marginBottom: 25, borderColor: COLORS.accent, borderWidth: 0.5 }]}>
+                                <Text style={{ color: COLORS.accent, fontWeight: '700', fontSize: 13, marginBottom: 15 }}>Rate this Guide</Text>
+                                <View style={{ flexDirection: 'row', gap: 10, marginBottom: 15 }}>
+                                    {[1, 2, 3, 4, 5].map(star => (
+                                        <TouchableOpacity key={star} onPress={() => setUserRating(star)}>
+                                            <Text style={{ fontSize: 24, color: star <= userRating ? COLORS.accent : COLORS.textMuted }}>★</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                                <View style={[globalStyles.inputRow, { height: 80, alignItems: 'flex-start', paddingVertical: 10 }]}>
+                                    <TextInput 
+                                        style={globalStyles.input} 
+                                        placeholder="Tell us about your experience..." 
+                                        placeholderTextColor={COLORS.textMuted}
+                                        multiline
+                                        value={userComment}
+                                        onChangeText={setUserComment}
+                                    />
+                                </View>
+                                <TouchableOpacity 
+                                    style={[globalStyles.button, { marginTop: 15, height: 40 }]} 
+                                    onPress={handlePostGuideReview}
+                                    disabled={submittingReview}
+                                >
+                                    {submittingReview ? <ActivityIndicator color={COLORS.textDark} /> : <Text style={[globalStyles.buttonText, { fontSize: 13 }]}>Post Review</Text>}
+                                </TouchableOpacity>
+                            </View>
+                        )}
+
+                        {guideReviews.length === 0 ? (
+                            <View style={{ padding: 30, alignItems: 'center', backgroundColor: COLORS.glass1, borderRadius: 20 }}>
+                                <Text style={{ color: COLORS.textMuted }}>No reviews yet. Be the first!</Text>
+                            </View>
+                        ) : (
+                            guideReviews.map(rev => (
+                                <View key={rev._id} style={{ backgroundColor: COLORS.glassCardDark, padding: 16, borderRadius: 18, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' }}>
+                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <Text style={{ color: COLORS.white, fontWeight: '700' }}>{rev.user?.name}</Text>
+                                        <Text style={{ color: COLORS.accent, fontSize: 12 }}>{'★'.repeat(rev.rating)}</Text>
+                                    </View>
+                                    <Text style={{ color: COLORS.textSoft, fontSize: 13, marginTop: 8 }}>{rev.comment}</Text>
+                                    <Text style={{ color: COLORS.textMuted, fontSize: 10, marginTop: 10 }}>{new Date(rev.createdAt).toLocaleDateString()}</Text>
+                                </View>
+                            ))
+                        )}
                     </View>
                 </ScrollView>
 
