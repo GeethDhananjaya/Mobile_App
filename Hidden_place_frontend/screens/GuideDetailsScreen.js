@@ -45,10 +45,13 @@ export default function GuideDetailsScreen({ route, navigation }) {
                 <View style={globalStyles.overlay} />
                 
                 <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
-                    <View style={{ padding: 24, paddingTop: 60 }}>
-                        <View style={globalStyles.rowBetween}>
-                            <TouchableOpacity style={globalStyles.buttonGhost} onPress={() => navigation.goBack()}>
-                                <Text style={globalStyles.buttonGhostText}>← Back</Text>
+                    <View style={{ paddingHorizontal: 24, paddingTop: Platform.OS === 'ios' ? 60 : 50 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                            <TouchableOpacity 
+                                style={{ backgroundColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10 }} 
+                                onPress={() => navigation.goBack()}
+                            >
+                                <Text style={{ color: COLORS.white, fontWeight: '600' }}>← Back</Text>
                             </TouchableOpacity>
 
                             {isOwner && (

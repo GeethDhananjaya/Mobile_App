@@ -116,10 +116,10 @@ export default function RegisterGuideScreen({ navigation, route }) {
                                     onPress={handleSubmit}
                                     disabled={loading}
                                 >
-                                    {loading ? <ActivityIndicator color={COLORS.textDark} /> : <Text style={globalStyles.buttonText}>Register Bio ✦</Text>}
+                                    {loading ? <ActivityIndicator color={COLORS.textDark} /> : <Text style={globalStyles.buttonText}>{editingGuide ? 'Update Profile' : 'Register Bio ✦'}</Text>}
                                 </TouchableOpacity>
 
-                                <TouchableOpacity style={globalStyles.buttonGhost} onPress={() => navigation.goBack()}>
+                                <TouchableOpacity style={[globalStyles.buttonGhost, { marginBottom: 40 }]} onPress={() => navigation.goBack()}>
                                     <Text style={globalStyles.buttonGhostText}>← Cancel</Text>
                                 </TouchableOpacity>
 
