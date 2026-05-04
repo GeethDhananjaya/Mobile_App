@@ -4,13 +4,15 @@ import { globalStyles, COLORS, BG_IMAGE } from '../styles/globalStyles';
 import { API_BASE_URL } from '../apiConfig';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export default function RegisterGuideScreen({ navigation }) {
-    const [name, setName] = useState('');
-    const [bio, setBio] = useState('');
-    const [languages, setLanguages] = useState('');
-    const [rates, setRates] = useState('');
-    const [contact, setContact] = useState('');
-    const [experience, setExperience] = useState('');
+export default function RegisterGuideScreen({ navigation, route }) {
+    const editingGuide = route.params?.guide;
+    
+    const [name, setName] = useState(editingGuide?.name || '');
+    const [bio, setBio] = useState(editingGuide?.bio || '');
+    const [languages, setLanguages] = useState(editingGuide?.languages?.join(', ') || '');
+    const [rates, setRates] = useState(editingGuide?.rates || '');
+    const [contact, setContact] = useState(editingGuide?.contact || '');
+    const [experience, setExperience] = useState(editingGuide?.experience || '');
     const [loading, setLoading] = useState(false);
     const [focusedField, setFocusedField] = useState(null);
 
@@ -23,22 +25,25 @@ export default function RegisterGuideScreen({ navigation }) {
         setLoading(true);
         try {
             const token = await AsyncStorage.getItem('userToken');
-            const res = await fetch(`${API_BASE_URL}/guides`, {
-                method: 'POST',
+            const url = editingGuide ? `${API_BASE_URL}/guides/${editingGuide._id}` : `${API_BASE_URL}/guides`;
+            const method = editingGuide ? 'PUT' : 'POST';
+            
+            const res = await fetch(url, {
+                method: method,
                 headers: { 
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}` 
                 },
                 body: JSON.stringify({ 
-                    name, bio, languages: languages.split(','), experience, rates, contact 
+                    name, bio, languages: languages.split(',').map(l => l.trim()), experience, rates, contact 
                 })
             });
 
             if (res.ok) {
-                Alert.alert('Guide Profile Registered!', 'Your professional bio is now live.');
+                Alert.alert(editingGuide ? 'Profile Updated!' : 'Profile Registered!', 'Your professional bio is now live.');
                 navigation.goBack();
             } else {
-                Alert.alert('Error', 'Failed to register guide profile');
+                Alert.alert('Error', `Failed to ${editingGuide ? 'update' : 'register'} guide profile`);
             }
         } catch (error) {
             Alert.alert('Network Error', 'Connection failed');

@@ -1,9 +1,21 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ImageBackground, ScrollView, TouchableOpacity, StatusBar, Linking, StyleSheet, Platform } from 'react-native';
 import { globalStyles, COLORS, BG_IMAGE } from '../styles/globalStyles';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function GuideDetailsScreen({ route, navigation }) {
     const { guide } = route.params;
+    const [user, setUser] = useState(null);
+
+    useEffect(() => {
+        const loadUser = async () => {
+            const userData = await AsyncStorage.getItem('userData');
+            if (userData) setUser(JSON.parse(userData));
+        };
+        loadUser();
+    }, []);
+
+    const isOwner = user && (user._id === guide.creator?._id || user._id === guide.creator);
 
     const handleContact = () => {
         const email = guide.creator?.email || guide.contact;
@@ -34,9 +46,20 @@ export default function GuideDetailsScreen({ route, navigation }) {
                 
                 <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
                     <View style={{ padding: 24, paddingTop: 60 }}>
-                        <TouchableOpacity style={globalStyles.buttonGhost} onPress={() => navigation.goBack()}>
-                            <Text style={globalStyles.buttonGhostText}>← Back</Text>
-                        </TouchableOpacity>
+                        <View style={globalStyles.rowBetween}>
+                            <TouchableOpacity style={globalStyles.buttonGhost} onPress={() => navigation.goBack()}>
+                                <Text style={globalStyles.buttonGhostText}>← Back</Text>
+                            </TouchableOpacity>
+
+                            {isOwner && (
+                                <TouchableOpacity 
+                                    style={{ backgroundColor: COLORS.accent, paddingHorizontal: 15, paddingVertical: 8, borderRadius: 12 }}
+                                    onPress={() => navigation.navigate('RegisterGuide', { guide: guide })}
+                                >
+                                    <Text style={{ color: COLORS.textDark, fontWeight: '700', fontSize: 12 }}>Edit Profile ✎</Text>
+                                </TouchableOpacity>
+                            )}
+                        </View>
 
                         <View style={styles.header}>
                             <View style={styles.avatar}>
