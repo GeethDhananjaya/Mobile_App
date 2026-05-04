@@ -150,13 +150,16 @@ export default function CategoriesScreen({ navigation }) {
                 <View style={globalStyles.overlay} />
                 <View style={{ flex: 1, padding: 24, paddingTop: 60 }}>
                     
-                    <View style={globalStyles.rowBetween}>
-                        <View>
-                            <Text style={globalStyles.title}>{isAdmin ? 'Manage Categories' : 'Destinations'}</Text>
-                            <Text style={globalStyles.subtitle}>Explore world by experience</Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <View style={{ flex: 1, paddingRight: 10 }}>
+                            <Text style={globalStyles.title} numberOfLines={1}>{isAdmin ? 'Manage Categories' : 'Destinations'}</Text>
+                            <Text style={globalStyles.subtitle} numberOfLines={1}>Explore world by experience</Text>
                         </View>
-                        <TouchableOpacity style={globalStyles.buttonGhost} onPress={() => navigation.goBack()}>
-                            <Text style={globalStyles.buttonGhostText}>← Back</Text>
+                        <TouchableOpacity 
+                            style={{ backgroundColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, marginTop: 5 }} 
+                            onPress={() => navigation.goBack()}
+                        >
+                            <Text style={{ color: COLORS.white, fontWeight: '600', fontSize: 12 }}>← Back</Text>
                         </TouchableOpacity>
                     </View>
 
