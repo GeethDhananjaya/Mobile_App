@@ -9,11 +9,24 @@ const { width } = Dimensions.get('window');
 export default function TripDetailsScreen({ route, navigation }) {
     const { tripId } = route.params;
     const [trip, setTrip] = useState(null);
+    const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         fetchTripDetails();
+        fetchUserProfile();
     }, [tripId]);
+
+    const fetchUserProfile = async () => {
+        try {
+            const token = await AsyncStorage.getItem('userToken');
+            const res = await fetch(`${API_BASE_URL}/auth/profile`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (res.ok) setUser(data);
+        } catch (error) { console.log("Profile fetch failed", error); }
+    };
 
     const fetchTripDetails = async () => {
         setLoading(true);
@@ -35,6 +48,40 @@ export default function TripDetailsScreen({ route, navigation }) {
         }
     };
 
+    const handleJoinAsGuide = async () => {
+        try {
+            const token = await AsyncStorage.getItem('userToken');
+            const res = await fetch(`${API_BASE_URL}/trips/${tripId}/join`, {
+                method: 'PUT',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                Alert.alert('Success', 'You have joined as a guide for this trip');
+                fetchTripDetails();
+            } else {
+                const data = await res.json();
+                Alert.alert('Error', data.message || 'Failed to join trip');
+            }
+        } catch (error) { Alert.alert('Error', 'Network error'); }
+    };
+
+    const handleLeaveTrip = async () => {
+        try {
+            const token = await AsyncStorage.getItem('userToken');
+            const res = await fetch(`${API_BASE_URL}/trips/${tripId}/leave`, {
+                method: 'PUT',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                Alert.alert('Success', 'You have left the trip');
+                fetchTripDetails();
+            } else {
+                const data = await res.json();
+                Alert.alert('Error', data.message || 'Failed to leave trip');
+            }
+        } catch (error) { Alert.alert('Error', 'Network error'); }
+    };
+
     if (loading) return (
         <View style={[globalStyles.screenRoot, { justifyContent: 'center' }]}>
             <ActivityIndicator color={COLORS.accent} size="large" />
@@ -47,22 +94,41 @@ export default function TripDetailsScreen({ route, navigation }) {
         </View>
     );
 
+    const isOwner = user && trip.user && (trip.user._id === user._id || trip.user === user._id);
+    const isGuide = user && trip.guide && (trip.guide._id === user._id || trip.guide === user._id);
+    const canEdit = (isOwner || isGuide) && trip.status !== 'Completed';
+
     return (
         <View style={globalStyles.screenRoot}>
             <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
             <ImageBackground source={BG_IMAGE} style={globalStyles.backgroundImage}>
                 <View style={globalStyles.overlay} />
                 
-                <ScrollView showsVerticalScrollIndicator={false}>
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
                     <View style={{ padding: 24, paddingTop: 60 }}>
-                        <TouchableOpacity 
-                            style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: COLORS.glass2, justifyContent: 'center', alignItems: 'center', marginBottom: 20 }}
-                            onPress={() => navigation.goBack()}
-                        >
-                            <Text style={{ color: COLORS.white, fontSize: 20 }}>←</Text>
-                        </TouchableOpacity>
+                        <View style={globalStyles.rowBetween}>
+                            <TouchableOpacity 
+                                style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: COLORS.glass2, justifyContent: 'center', alignItems: 'center' }}
+                                onPress={() => navigation.goBack()}
+                            >
+                                <Text style={{ color: COLORS.white, fontSize: 20 }}>←</Text>
+                            </TouchableOpacity>
 
-                        <Text style={[globalStyles.title, { fontSize: 28 }]}>{trip.title}</Text>
+                            {canEdit ? (
+                                <TouchableOpacity 
+                                    style={{ backgroundColor: COLORS.accent, paddingHorizontal: 15, paddingVertical: 8, borderRadius: 12 }}
+                                    onPress={() => navigation.navigate('CreateTrip', { trip: trip })}
+                                >
+                                    <Text style={{ color: COLORS.textDark, fontWeight: '700', fontSize: 12 }}>Update Details</Text>
+                                </TouchableOpacity>
+                            ) : trip.status === 'Completed' && (
+                                <View style={{ backgroundColor: COLORS.glass2, paddingHorizontal: 15, paddingVertical: 8, borderRadius: 12 }}>
+                                    <Text style={{ color: COLORS.textMuted, fontSize: 12 }}>Trip Completed (Read Only)</Text>
+                                </View>
+                            )}
+                        </View>
+
+                        <Text style={[globalStyles.title, { fontSize: 28, marginTop: 20 }]}>{trip.title}</Text>
                         
                         <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
                             <View style={{ backgroundColor: COLORS.accent, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 10 }}>
@@ -72,6 +138,29 @@ export default function TripDetailsScreen({ route, navigation }) {
                                 {trip.startDate ? new Date(trip.startDate).toLocaleDateString() : 'N/A'} - {trip.endDate ? new Date(trip.endDate).toLocaleDateString() : 'N/A'}
                             </Text>
                         </View>
+
+                        {trip.guide ? (
+                            <View style={{ marginTop: 20, backgroundColor: COLORS.glass1, padding: 15, borderRadius: 16, borderWidth: 1, borderColor: COLORS.border1 }}>
+                                <Text style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: '800', marginBottom: 5 }}>GUIDE ASSIGNED</Text>
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <Text style={{ color: COLORS.white, fontSize: 16, fontWeight: '700' }}>{trip.guide.name}</Text>
+                                    {isGuide && (
+                                        <TouchableOpacity onPress={handleLeaveTrip}>
+                                            <Text style={{ color: COLORS.error, fontSize: 12 }}>Leave Trip ×</Text>
+                                        </TouchableOpacity>
+                                    )}
+                                </View>
+                            </View>
+                        ) : (
+                            user?.role === 'guide' && (
+                                <TouchableOpacity 
+                                    style={{ marginTop: 20, backgroundColor: COLORS.successSurf, padding: 15, borderRadius: 16, borderWidth: 1, borderColor: COLORS.success, alignItems: 'center' }}
+                                    onPress={handleJoinAsGuide}
+                                >
+                                    <Text style={{ color: COLORS.success, fontWeight: '700' }}>Join as Guide for this Trip +</Text>
+                                </TouchableOpacity>
+                            )
+                        )}
 
                         <View style={{ marginTop: 30 }}>
                             <Text style={globalStyles.sectionTitle}>Destinations to Visit</Text>

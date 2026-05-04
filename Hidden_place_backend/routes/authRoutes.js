@@ -102,20 +102,25 @@ router.post('/forgot-password', async (req, res) => {
       }
     });
 
-    // The link the user will click (you will build this screen in Expo later)
-    const resetUrl = `http://localhost:8081/reset-password/${resetToken}`;
-
     const mailOptions = {
       from: `"Hidden Gems" <${process.env.EMAIL_USER?.trim()}>`,
       to: user.email,
       subject: 'Hidden Places - Password Reset Request',
-      text: `You requested a password reset. 
-      
-      Your reset token is: ${resetToken}
-      
-      Copy this token and paste it into the "Reset Password" screen in your app.
-      
-      This token will expire in 15 minutes. If you did not request this, please ignore this email.`
+      text: `You requested a password reset.\n\nYour reset token is: ${resetToken}\n\nCopy this token and paste it into the "Reset Password" screen in your app.\n\nThis token will expire in 15 minutes. If you did not request this, please ignore this email.`,
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px; color: #333; max-width: 500px; margin: 0 auto; border: 1px solid #ddd; border-radius: 8px;">
+          <h2 style="color: #222; text-align: center;">Password Reset</h2>
+          <p>We received a request to reset your password.</p>
+          <p>Your password reset token is:</p>
+          <div style="background-color: #f4f4f4; padding: 15px; border-radius: 5px; font-size: 24px; font-weight: bold; text-align: center; margin: 20px 0; letter-spacing: 2px; color: #000;">
+            ${resetToken}
+          </div>
+          <p>Simply copy this token and paste it into the "Reset Password" screen in the app.</p>
+          <p style="color: #777; font-size: 12px; margin-top: 30px; text-align: center;">
+            This token will expire in 15 minutes.<br/>If you did not request a password reset, please ignore this email.
+          </p>
+        </div>
+      `
     };
 
     await transporter.sendMail(mailOptions);
@@ -312,36 +317,32 @@ router.put('/admin/guides-approve/:id', protect, async (req, res) => {
 
     // Send email to guide... (using 'user' variable now instead of 'guide')
 
-    try {
-      const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-          user: process.env.EMAIL_USER?.trim(),
-          pass: process.env.EMAIL_PASS?.replace(/\s+/g, ''),
-        }
-      });
+    // Send email to guide asynchronously
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER?.trim(),
+        pass: process.env.EMAIL_PASS?.replace(/\s+/g, ''),
+      }
+    });
 
-      const mailOptions = {
-        from: `"Hidden Gems SL" <${process.env.EMAIL_USER?.trim()}>`,
-        to: user.email,
-        subject: 'Welcome to the Team! Your Guide Profile is Approved 🛡',
-        html: `
-          <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
-            <h2>Congratulations ${user.name}!</h2>
-            <p>Your local guide profile for <b>Hidden Gems SL</b> has been officially approved by our admin team.</p>
-            <p>You can now log in to the app and start sharing your secret discoveries and guiding travellers on their journey.</p>
-            <p style="margin-top: 30px;">Happy Exploring,<br/>The Hidden Gems Team</p>
-          </div>
-        `,
-      };
+    const mailOptions = {
+      from: `"Hidden Gems SL" <${process.env.EMAIL_USER?.trim()}>`,
+      to: user.email,
+      subject: 'Welcome to the Team! Your Guide Profile is Approved 🛡',
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+          <h2>Congratulations ${user.name}!</h2>
+          <p>Your local guide profile for <b>Hidden Gems SL</b> has been officially approved by our admin team.</p>
+          <p>You can now log in to the app and start sharing your secret discoveries and guiding travellers on their journey.</p>
+          <p style="margin-top: 30px;">Happy Exploring,<br/>The Hidden Gems Team</p>
+        </div>
+      `,
+    };
 
-      await transporter.sendMail(mailOptions);
-      res.status(200).json({ message: 'Guide approved and email notification sent!', user });
-    } catch (emailError) {
-      console.error('Email Notification Error:', emailError);
-      // Still return 200 because the database WAS updated!
-      res.status(200).json({ message: 'Guide approved, but email notification failed to send.', user });
-    }
+    transporter.sendMail(mailOptions).catch(err => console.error('Email Notification Error:', err));
+    
+    res.status(200).json({ message: 'Guide approved successfully!', user });
   } catch (error) {
     console.error('Approval Error:', error);
     res.status(500).json({ message: 'Approval process failed' });

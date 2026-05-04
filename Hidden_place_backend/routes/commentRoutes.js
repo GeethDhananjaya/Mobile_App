@@ -30,7 +30,28 @@ router.get('/:placeId', async (req, res) => {
 });
 
 // ==========================================
-// 3. DELETE COMMENT (Admin or Owner)
+// 3. EDIT COMMENT (Protected)
+// ==========================================
+router.put('/:id', protect, async (req, res) => {
+  try {
+    const { text } = req.body;
+    const comment = await Comment.findById(req.params.id);
+    if (!comment) return res.status(404).json({ message: 'Comment not found' });
+
+    if (comment.user.toString() !== req.user) {
+      return res.status(401).json({ message: 'Not authorized' });
+    }
+
+    comment.text = text;
+    await comment.save();
+    res.status(200).json(comment);
+  } catch (error) {
+    res.status(500).json({ message: 'Update failed' });
+  }
+});
+
+// ==========================================
+// 4. DELETE COMMENT (Admin or Owner)
 // ==========================================
 router.delete('/:id', protect, async (req, res) => {
   try {

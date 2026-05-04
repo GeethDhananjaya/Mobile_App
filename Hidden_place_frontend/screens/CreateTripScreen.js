@@ -4,12 +4,14 @@ import { globalStyles, COLORS, BG_IMAGE } from '../styles/globalStyles';
 import { API_BASE_URL } from '../apiConfig';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export default function CreateTripScreen({ navigation }) {
-    const [title, setTitle] = useState('');
+export default function CreateTripScreen({ navigation, route }) {
+    const editingTrip = route.params?.trip;
+    
+    const [title, setTitle] = useState(editingTrip?.title || '');
     const [allPlaces, setAllPlaces] = useState([]);
-    const [selectedPlaces, setSelectedPlaces] = useState([]);
-    const [startDate, setStartDate] = useState('');
-    const [endDate, setEndDate] = useState('');
+    const [selectedPlaces, setSelectedPlaces] = useState(editingTrip?.places?.map(p => p._id || p) || []);
+    const [startDate, setStartDate] = useState(editingTrip?.startDate ? new Date(editingTrip.startDate).toISOString().split('T')[0] : '');
+    const [endDate, setEndDate] = useState(editingTrip?.endDate ? new Date(editingTrip.endDate).toISOString().split('T')[0] : '');
     const [showStart, setShowStart] = useState(false);
     const [showEnd, setShowEnd] = useState(false);
     const [placesLoading, setPlacesLoading] = useState(true);
@@ -119,8 +121,6 @@ export default function CreateTripScreen({ navigation }) {
         }
     };
 
-    // Obsolete handlers removed
-
     const handleSubmit = async () => {
         if (!title || selectedPlaces.length === 0) {
             Alert.alert('Incomplete Trip', 'Please add a title and select some places');
@@ -130,8 +130,11 @@ export default function CreateTripScreen({ navigation }) {
         setLoading(true);
         try {
             const token = await AsyncStorage.getItem('userToken');
-            const res = await fetch(`${API_BASE_URL}/trips`, {
-                method: 'POST',
+            const url = editingTrip ? `${API_BASE_URL}/trips/${editingTrip._id}` : `${API_BASE_URL}/trips`;
+            const method = editingTrip ? 'PUT' : 'POST';
+            
+            const res = await fetch(url, {
+                method: method,
                 headers: { 
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}` 
@@ -142,13 +145,14 @@ export default function CreateTripScreen({ navigation }) {
             });
 
             if (res.ok) {
-                Alert.alert('Trip Created!', 'Enjoy your journey');
-                navigation.goBack();
+                Alert.alert(editingTrip ? 'Trip Updated!' : 'Trip Created!', 'Enjoy your journey');
+                navigation.navigate('MyTrips');
             } else {
-                Alert.alert('Error', 'Failed to create trip plan');
+                const errorData = await res.json();
+                Alert.alert('Submission Failed', errorData.message || 'Server returned an error');
             }
         } catch (error) {
-            Alert.alert('Network Error', 'Connection failed');
+            Alert.alert('Network Error', 'Could not connect to server. Please check your internet.');
         } finally {
             setLoading(false);
         }

@@ -7,6 +7,7 @@ const TripPlanSchema = new mongoose.Schema({
   startDate: { type: Date },
   endDate: { type: Date },
   status: { type: String, enum: ['Planned', 'Completed'], default: 'Planned' },
+  guide: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 }, { timestamps: true });
 
 module.exports = mongoose.model('TripPlan', TripPlanSchema);

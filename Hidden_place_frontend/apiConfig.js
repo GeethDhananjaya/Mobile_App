@@ -1,3 +1,3 @@
 
 
-export const API_BASE_URL = 'http://10.132.70.244:5000/api';
+export const API_BASE_URL = 'https://mobileapp-production-d938.up.railway.app/api';

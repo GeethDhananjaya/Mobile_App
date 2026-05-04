@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { View, Text, ImageBackground, ScrollView, TouchableOpacity, Animated, StatusBar, Dimensions, Alert, ActivityIndicator, Image, TextInput } from 'react-native';
+import { View, Text, ImageBackground, ScrollView, TouchableOpacity, Animated, StatusBar, Dimensions, Alert, ActivityIndicator, Image, TextInput, FlatList } from 'react-native';
 import { globalStyles, COLORS, BG_IMAGE } from '../styles/globalStyles';
 import { API_BASE_URL } from '../apiConfig';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -112,64 +112,90 @@ export default function HomeScreen({ navigation }) {
       <ImageBackground source={BG_IMAGE} style={globalStyles.backgroundImage}>
         <View style={globalStyles.overlay} />
 
-        <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
-          <Animated.View style={[globalStyles.header, a0, { marginTop: 40 }]}>
+        <FlatList
+          data={filteredPlaces}
+          keyExtractor={item => item._id}
+          showsVerticalScrollIndicator={false}
+          ListHeaderComponent={
             <View>
-              <Text style={globalStyles.headerGreet}>Discover Hidden Places </Text>
-              <Text style={globalStyles.headerName}>{user ? user.name : 'Explorer'}</Text>
+              <Animated.View style={[globalStyles.header, a0, { marginTop: 40 }]}>
+                <View>
+                  <Text style={globalStyles.headerGreet}>Discover Hidden Places</Text>
+                  <Text style={globalStyles.headerName}>{user ? user.name : 'Explorer'}</Text>
+                </View>
+                <TouchableOpacity style={globalStyles.avatar} onPress={() => navigation.navigate('Profile')}>
+                  <Text style={globalStyles.avatarText}>
+                    {user ? user.name.substring(0, 2).toUpperCase() : 'EX'}
+                  </Text>
+                </TouchableOpacity>
+              </Animated.View>
+
+              <Animated.View style={[globalStyles.searchBar, a1]}>
+                <TextInput 
+                  style={{ flex: 1, color: COLORS.white, fontSize: 13, height: '100%' }}
+                  placeholder="Search for secret destinations..."
+                  placeholderTextColor={COLORS.textMuted}
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                />
+                <View style={globalStyles.filterBtn}>
+                  <Text style={globalStyles.filterIcon}>🔍</Text>
+                </View>
+              </Animated.View>
+
+              <Animated.ScrollView horizontal showsHorizontalScrollIndicator={false} style={a2} contentContainerStyle={globalStyles.catScroll}>
+                {categories.map(c => (
+                  <TouchableOpacity key={c._id} style={[globalStyles.catChip, activeCat === c._id && globalStyles.catChipActive]} onPress={() => setActiveCat(c._id)}>
+                    <Text style={{ color: activeCat === c._id ? COLORS.textDark : COLORS.white }}>{c.icon} {c.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </Animated.ScrollView>
+
+              <Animated.View style={[globalStyles.sectionHeader, a3]}>
+                <Text style={globalStyles.sectionTitle}>Secret Hidden Destinations</Text>
+                <TouchableOpacity onPress={initData}><Text style={{ color: COLORS.accent }}>Refresh Feed</Text></TouchableOpacity>
+              </Animated.View>
             </View>
-            <TouchableOpacity style={globalStyles.avatar} onPress={() => navigation.navigate('Profile')}>
-              <Text style={globalStyles.avatarText}>
-                {user ? user.name.substring(0, 2).toUpperCase() : 'EX'}
-              </Text>
-            </TouchableOpacity>
-          </Animated.View>
-
-          <Animated.View style={[globalStyles.searchBar, a1]}>
-            <TextInput 
-              style={{ flex: 1, color: COLORS.white, fontSize: 13, height: '100%' }}
-              placeholder="Search for secret destinations..."
-              placeholderTextColor={COLORS.textMuted}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-            <View style={globalStyles.filterBtn}>
-              <Text style={globalStyles.filterIcon}>🔍</Text>
-            </View>
-          </Animated.View>
-
-          <Animated.ScrollView horizontal showsHorizontalScrollIndicator={false} style={a2} contentContainerStyle={globalStyles.catScroll}>
-            {categories.map(c => (
-              <TouchableOpacity key={c._id} style={[globalStyles.catChip, activeCat === c._id && globalStyles.catChipActive]} onPress={() => setActiveCat(c._id)}>
-                <Text style={{ color: activeCat === c._id ? COLORS.textDark : COLORS.white }}>{c.icon} {c.name}</Text>
-              </TouchableOpacity>
-            ))}
-          </Animated.ScrollView>
-
-          <Animated.View style={[globalStyles.sectionHeader, a3]}>
-            <Text style={globalStyles.sectionTitle}>Hidden Destinations</Text>
-            <TouchableOpacity onPress={initData}><Text style={{ color: COLORS.accent }}>Refresh</Text></TouchableOpacity>
-          </Animated.View>
-
-          <Animated.ScrollView horizontal showsHorizontalScrollIndicator={false} style={[a3, { paddingLeft: 22, height: 220 }]}>
-            {loading ? (
-              <ActivityIndicator color={COLORS.accent} style={{ marginLeft: 20 }} />
-            ) : filteredPlaces.length > 0 ? filteredPlaces.map(item => (
-              <TouchableOpacity key={item._id} style={[globalStyles.featCard, { width: CARD_W, marginRight: 15 }]} onPress={() => navigation.navigate('PlaceDetails', { placeId: item._id })}>
-                <ImageBackground source={{ uri: item.imageUrl }} style={globalStyles.featImg} imageStyle={globalStyles.featImgStyle}>
-                  <View style={{ backgroundColor: 'rgba(0,0,0,0.3)', padding: 10, borderRadius: 10 }}>
-                    <Text style={globalStyles.featTitle}>{item.title}</Text>
-                    <Text style={{ color: COLORS.white, fontSize: 10 }}>{item.location}</Text>
+          }
+          renderItem={({ item }) => (
+            <TouchableOpacity 
+              style={{ 
+                backgroundColor: COLORS.glassCardDark, borderRadius: 24, marginBottom: 20, marginHorizontal: 22, overflow: 'hidden', 
+                borderWidth: 1, borderColor: COLORS.border1, elevation: 5 
+              }} 
+              onPress={() => navigation.navigate('PlaceDetails', { placeId: item._id })}
+            >
+              <Image source={{ uri: item.imageUrl }} style={{ width: '100%', height: 220 }} />
+              <View style={{ padding: 18 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ color: COLORS.white, fontSize: 20, fontWeight: '700' }}>{item.title}</Text>
+                  <View style={{ backgroundColor: COLORS.accent, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 }}>
+                    <Text style={{ color: COLORS.textDark, fontSize: 10, fontWeight: '800' }}>{item.category?.name || 'Hidden Gem'}</Text>
                   </View>
-                </ImageBackground>
-              </TouchableOpacity>
-            )) : (
-              <View style={{ width: CARD_W, height: 210, backgroundColor: COLORS.glass1, borderRadius: 22, justifyContent: 'center', alignItems: 'center' }}>
-                <Text style={{ color: COLORS.textMuted }}>No places in this category</Text>
+                </View>
+                <Text style={{ color: COLORS.textSoft, fontSize: 13, marginTop: 5 }}>📍 {item.location}</Text>
+                <Text numberOfLines={2} style={{ color: COLORS.textMuted, fontSize: 12, marginTop: 12, lineHeight: 18 }}>
+                  {item.description}
+                </Text>
+                
+                <View style={{ flexDirection: 'row', marginTop: 15, alignItems: 'center', gap: 15 }}>
+                  <Text style={{ color: COLORS.accent, fontSize: 11, fontWeight: '700' }}>Read More →</Text>
+                  <Text style={{ color: COLORS.textMuted, fontSize: 11 }}>By {item.creator?.name || 'Local Guide'}</Text>
+                </View>
               </View>
-            )}
-          </Animated.ScrollView>
-        </ScrollView>
+            </TouchableOpacity>
+          )}
+          ListEmptyComponent={
+            loading ? (
+              <ActivityIndicator color={COLORS.accent} style={{ marginTop: 50 }} />
+            ) : (
+              <View style={{ height: 200, backgroundColor: COLORS.glass1, borderRadius: 22, marginHorizontal: 22, justifyContent: 'center', alignItems: 'center' }}>
+                <Text style={{ color: COLORS.textMuted }}>No places found. Try another category!</Text>
+              </View>
+            )
+          }
+          contentContainerStyle={{ paddingBottom: 100 }}
+        />
 
         <View style={globalStyles.bottomNav}>
           {tabs.map(t => (

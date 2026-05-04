@@ -12,6 +12,7 @@ export default function PlaceDetailsScreen({ route, navigation }) {
   const [reviews, setReviews] = useState([]);
   const [comments, setComments] = useState([]);
   const [commentText, setCommentText] = useState('');
+  const [editingCommentId, setEditingCommentId] = useState(null);
   const [canDelete, setCanDelete] = useState(false);
   const [loading, setLoading] = useState(true);
   const [gallery, setGallery] = useState([]);
@@ -65,16 +66,35 @@ export default function PlaceDetailsScreen({ route, navigation }) {
     if (!commentText.trim()) return;
     const token = await AsyncStorage.getItem('userToken');
     try {
-       const res = await fetch(`${API_BASE_URL}/comments`, {
-          method: 'POST',
+       const url = editingCommentId ? `${API_BASE_URL}/comments/${editingCommentId}` : `${API_BASE_URL}/comments`;
+       const method = editingCommentId ? 'PUT' : 'POST';
+       
+       const res = await fetch(url, {
+          method: method,
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({ place: placeId, text: commentText.trim() })
        });
        if (res.ok) {
            setCommentText('');
+           setEditingCommentId(null);
            fetchPlaceData();
+       } else {
+           const errorData = await res.json();
+           Alert.alert('Comment Error', errorData.message || 'Failed to save comment');
        }
-    } catch (e) {}
+    } catch (e) {
+       Alert.alert('Error', 'Network connection issue');
+    }
+  };
+
+  const startEditComment = (comment) => {
+    setCommentText(comment.text);
+    setEditingCommentId(comment._id);
+  };
+
+  const cancelEditComment = () => {
+    setCommentText('');
+    setEditingCommentId(null);
   };
 
   const handleArchive = async () => {
@@ -171,20 +191,30 @@ export default function PlaceDetailsScreen({ route, navigation }) {
              <Text style={globalStyles.sectionTitle}>Discussion ({comments.length})</Text>
              <View style={{ flexDirection:'row', gap: 10, marginTop: 15, marginBottom: 10 }}>
                 <View style={[globalStyles.inputRow, { flex: 1, height: 44, backgroundColor: COLORS.glass1, paddingHorizontal: 15 }]}>
-                   <TextInput style={{ color: COLORS.white, flex: 1 }} placeholder="Write a comment..." placeholderTextColor={COLORS.textMuted} value={commentText} onChangeText={setCommentText} />
+                   <TextInput style={{ color: COLORS.white, flex: 1 }} placeholder={editingCommentId ? "Edit your comment..." : "Write a comment..."} placeholderTextColor={COLORS.textMuted} value={commentText} onChangeText={setCommentText} />
                 </View>
                 <TouchableOpacity style={[globalStyles.button, { width: 60, height: 44, borderRadius: 12, shadowColor: 'transparent', backgroundColor: COLORS.accent }]} onPress={handlePostComment}>
-                   <Text style={{ color: COLORS.textDark, fontWeight: '700' }}>Post</Text>
+                   <Text style={{ color: COLORS.textDark, fontWeight: '700' }}>{editingCommentId ? 'Save' : 'Post'}</Text>
                 </TouchableOpacity>
+                {editingCommentId && (
+                  <TouchableOpacity style={{ justifyContent:'center' }} onPress={cancelEditComment}>
+                    <Text style={{ color: COLORS.textMuted }}>Cancel</Text>
+                  </TouchableOpacity>
+                )}
              </View>
 
              {comments.map((c) => (
                 <View key={c._id} style={{ marginBottom: 12, borderLeftWidth: 2, borderColor: COLORS.accent, paddingLeft: 12 }}>
                    <View style={{ flexDirection:'row', justifyContent:'space-between' }}>
                       <Text style={{ color: COLORS.white, fontWeight: '700', fontSize: 13 }}>{c.user?.name}</Text>
-                      {(isAdmin || currentUser?._id === c.user?._id) && (
-                        <TouchableOpacity onPress={() => deleteComment(c._id)}><Text style={{ color: COLORS.error, fontSize: 10 }}>Remove</Text></TouchableOpacity>
-                      )}
+                      <View style={{ flexDirection:'row', gap: 10 }}>
+                        {(currentUser?._id === c.user?._id) && (
+                          <TouchableOpacity onPress={() => startEditComment(c)}><Text style={{ color: COLORS.accent, fontSize: 10 }}>Edit</Text></TouchableOpacity>
+                        )}
+                        {(isAdmin || currentUser?._id === c.user?._id) && (
+                          <TouchableOpacity onPress={() => deleteComment(c._id)}><Text style={{ color: COLORS.error, fontSize: 10 }}>Remove</Text></TouchableOpacity>
+                        )}
+                      </View>
                    </View>
                    <Text style={{ color: COLORS.textSoft, fontSize: 13, marginTop: 2 }}>{c.text}</Text>
                 </View>
